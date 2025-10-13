@@ -1,0 +1,100 @@
+name: Timesheet CI/CD
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+
+jobs:
+  code-checks:
+    name: Code Checks
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run linter
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Check TypeScript types
+        run: npm run types:check
+
+      - name: Check code formatting
+        run: npm run format:check
+        continue-on-error: true
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Build Storybook
+        run: npm run build-storybook
+        continue-on-error: true
+
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    needs: [code-checks]
+    if: github.repository_owner == 'devshittu'
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - name: Start deployment
+        uses: bobheadxi/deployments@v1
+        id: deployment
+        with:
+          step: start
+          token: ${{ secrets.GITHUB_TOKEN }}
+          env: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Preview' }}
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        id: vercel-deploy
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-args: ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          scope: ${{ secrets.VERCEL_ORG_ID }}
+          working-directory: ./
+
+      - name: Update deployment status
+        uses: bobheadxi/deployments@v1
+        if: always()
+        with:
+          step: finish
+          token: ${{ secrets.GITHUB_TOKEN }}
+          status: ${{ job.status }}
+          env: ${{ steps.deployment.outputs.env }}
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+          env_url: ${{ steps.vercel-deploy.outputs.preview-url }}
+
+      - name: Comment deployment URL
+        if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createCommitComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+              body: `🚀 Deployed to Vercel: ${{ steps.vercel-deploy.outputs.preview-url }}`
+            })
