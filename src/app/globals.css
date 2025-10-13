@@ -1,21 +1,137 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /* Color Palette: Light Theme */
+  --background-light: #f9f9f9;
+  --foreground-light: #1d1d1f;
+  --card-background-light: #ffffff;
+  --border-light: #d1d1d6;
+  --input-background-light: #f0f0f0;
+  --accent-light: #007aff;
+  --accent-foreground-light: #ffffff;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  /* Color Palette: Dark Theme */
+  --background-dark: #000000;
+  --foreground-dark: #f5f5f7;
+  --card-background-dark: #1c1c1e;
+  --border-dark: #3a3a3c;
+  --input-background-dark: #2c2c2e;
+  --accent-dark: #0a84ff;
+  --accent-foreground-dark: #ffffff;
+
+  /* Using Outfit as it's similar to Century Gothic but better optimized for web */
+  --font-primary: 'Outfit', 'Century Gothic', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', sans-serif;
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--background-light);
+  color: var(--foreground-light);
+  font-family: var(--font-primary);
+}
+
+.dark body {
+  background-color: var(--background-dark);
+  color: var(--foreground-dark);
+}
+
+@layer components {
+  .apple-input {
+    @apply w-full px-3 py-2 text-base rounded-lg transition-colors duration-200 ease-in-out 
+    focus:outline-none focus:ring-2 focus:ring-opacity-75 bg-[var(--input-background-light)] 
+    border border-transparent text-[var(--foreground-light)] 
+    focus:ring-[var(--accent-light)] focus:border-[var(--accent-light)];
+  }
+
+  .dark .apple-input {
+    @apply bg-[var(--input-background-dark)] text-[var(--foreground-dark)] 
+    focus:ring-[var(--accent-dark)] focus:border-[var(--accent-dark)];
+  }
+
+  .apple-button {
+    @apply flex items-center justify-center gap-2 px-4 py-2 font-medium rounded-lg 
+    transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 
+    focus:ring-offset-2 focus:ring-opacity-75 bg-[var(--accent-light)] 
+    text-[var(--accent-foreground-light)] focus:ring-[var(--accent-light)] 
+    focus:ring-offset-[var(--background-light)];
+  }
+
+  .apple-button:hover {
+    filter: brightness(1.1);
+  }
+
+  .apple-button:disabled {
+    background-color: #aeb0b2;
+    filter: none;
+    cursor: not-allowed;
+  }
+
+  .dark .apple-button {
+    @apply bg-[var(--accent-dark)] text-[var(--accent-foreground-dark)] 
+    focus:ring-[var(--accent-dark)] focus:ring-offset-[var(--background-dark)];
+  }
+
+  .dark .apple-button:disabled {
+    background-color: #4a4a4b;
+  }
+
+  .control-button {
+    @apply p-2 rounded-full transition-colors duration-200 
+    bg-[var(--card-background-light)] border border-[var(--border-light)];
+  }
+
+  .dark .control-button {
+    @apply bg-[var(--card-background-dark)] border-[var(--border-dark)];
+  }
+
+  .control-button:hover {
+    background-color: var(--input-background-light);
+  }
+
+  .dark .control-button:hover {
+    background-color: var(--input-background-dark);
+  }
+}
+
+/* --- PDF Generation Styles --- */
+.pdf-render-container {
+  background-color: #ffffff;
+  color: #000000;
+  font-family: var(--font-primary);
+}
+
+.pdf-page {
+  width: 210mm;
+  height: 297mm;
+  padding: 12mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  position: relative;
+  page-break-after: always;
+  background-color: #ffffff;
+}
+
+/* Ensure consistent rendering for PDF */
+.pdf-render-container * {
+  font-family: var(--font-primary) !important;
+}
+
+@media print {
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .no-print {
+    display: none;
+  }
+
+  .pdf-page {
+    margin: 0;
+    box-shadow: none;
+  }
 }
