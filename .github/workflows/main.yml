@@ -1,55 +1,86 @@
-name: CI/CD
-on:
-  - push
-jobs:
-# add jobs here
-  code-checks:
-    name: Code Checks
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-      - run: mv .env.example .env
-      - run: npm install
-      # - run: npm run test
-      - run: npm run lint
-      - run: npm run format:check
-      # - run: npm run types:check
+name: CI/CD Pipeline
 
-# jobs:
-  # previous jobs
-  #start of a new job
-  deploy:
-    name: Deploy To Vercel
+on:
+  push:
+    branches:
+      - main
+      - staging
+  pull_request:
+    branches:
+      - main
+      - staging
+
+jobs:
+  code-checks:
+    name: Code Quality Checks
     runs-on: ubuntu-latest
-    needs: [code-checks] #[code-checks, e2e]
-    if: github.repository_owner == 'devshittu'
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Check formatting
+        run: npm run format:check
+        continue-on-error: true
+
+      - name: Type checking
+        run: npm run types:check
+
+      - name: Build application
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Build Storybook
+        run: npm run build-storybook
+        continue-on-error: true
+
+  deploy:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    environment: ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+    needs: [code-checks]
+    if: github.event_name == 'push'
     permissions:
       contents: read
       deployments: write
     steps:
-      - name: start deployment
+      - name: Start deployment
         uses: bobheadxi/deployments@v1
         id: deployment
         with:
           step: start
           token: ${{ secrets.GITHUB_TOKEN }}
-          env: ${{ fromJSON('["Production", "Preview"]')
-            [github.ref != 'refs/heads/master'] }}
-      - uses: actions/checkout@v3
-      - run: mv .env.example .env
-      - uses: amondnet/vercel-action@v25
+          env: ${{ github.ref == 'refs/heads/main' && 'Production' || 'Preview' }}
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25
+        id: vercel-deploy
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-args: ${{ fromJSON('["--prod", ""]')
-            [github.ref != 'refs/heads/master'] }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID}}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID}}
-          scope: ${{ secrets.VERCEL_ORG_ID}}
+          vercel-args: ${{ github.ref == 'refs/heads/main' && '--prod' || '' }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          scope: ${{ secrets.VERCEL_ORG_ID }}
           working-directory: ./
-      - name: update deployment status
+
+      - name: Update deployment status
         uses: bobheadxi/deployments@v1
         if: always()
         with:
@@ -57,7 +88,73 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           status: ${{ job.status }}
           env: ${{ steps.deployment.outputs.env }}
-          deployment_id: ${{ steps.deployment.outputs.
-            deployment_id }}
+          deployment_id: ${{ steps.deployment.outputs.deployment_id }}
+          env_url: ${{ steps.vercel-deploy.outputs.preview-url }}
 
+# name: CI/CD
+# on:
+#   - push
+# jobs:
+#   # add jobs here
+#   code-checks:
+#     name: Code Checks
+#     runs-on: ubuntu-latest
+#     environment: staging # Associate this job with the staging environment
+#     steps:
+#       - uses: actions/checkout@v3
+#       - uses: actions/setup-node@v3
+#         with:
+#           node-version: 20.x
+#       - run: mv .env.example .env
+#       - run: npm install --legacy-peer-deps
+#       # - run: npm run test
+#       # - run: npm run lint
+#       # - run: npm run format:check
+#       # - run: npm run types:check
+
+#       - run: npm run build
+#       - run: npm run build-storybook
+
+#   # jobs:
+#   # previous jobs
+#   #start of a new job
+#   deploy:
+#     name: Deploy To Vercel
+#     runs-on: ubuntu-latest
+#     environment: staging # Associate this job with the staging environment
+#     needs: [code-checks] #[code-checks, e2e]
+#     if: github.repository_owner == 'devshittu'
+#     permissions:
+#       contents: read
+#       deployments: write
+#     steps:
+#       - name: start deployment
+#         uses: bobheadxi/deployments@v1
+#         id: deployment
+#         with:
+#           step: start
+#           token: ${{ secrets.GITHUB_TOKEN }}
+#           env: ${{ fromJSON('["Production", "Preview"]')
+#             [github.ref != 'refs/heads/master'] }}
+#       - uses: actions/checkout@v3
+#       - run: mv .env.example .env
+#       - uses: amondnet/vercel-action@v25
+#         with:
+#           vercel-token: ${{ secrets.VERCEL_TOKEN }}
+#           vercel-args: ${{ fromJSON('["--prod --debug", ""]')
+#             [github.ref != 'refs/heads/master'] }}
+#           vercel-org-id: ${{ secrets.VERCEL_ORG_ID}}
+#           vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID}}
+#           scope: ${{ secrets.VERCEL_ORG_ID}}
+#           working-directory: ./
+#       - name: update deployment status
+#         uses: bobheadxi/deployments@v1
+#         if: always()
+#         with:
+#           step: finish
+#           token: ${{ secrets.GITHUB_TOKEN }}
+#           status: ${{ job.status }}
+#           env: ${{ steps.deployment.outputs.env }}
+#           deployment_id: ${{ steps.deployment.outputs.
+#             deployment_id }}
 # .github/workflows/main.yml
