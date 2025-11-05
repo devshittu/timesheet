@@ -20,6 +20,7 @@ import type {
   PrintableDocumentProps,
 } from '@/types';
 import Logo from '@/components/Logo';
+import PlaceholderLogo from './PlaceholderLogo';
 import {
   getLastWorkingDaysOfMonth,
   formatPayrollDeadline,
@@ -92,6 +93,8 @@ const UserSettings: React.FC<UserSettingsProps> = ({ currentDate }) => {
     setPageBreakDay,
     payrollDeadlineOffset,
     setPayrollDeadlineOffset,
+    useCygnetLogo,
+    setUseCygnetLogo,
   } = useSettingsStore();
 
   // Recalculate working days whenever currentDate changes
@@ -102,6 +105,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({ currentDate }) => {
   const siteNameId = useId();
   const pageBreakId = useId();
   const payrollDeadlineId = useId();
+  const logoSelectionId = useId();
 
   return (
     <div className="no-print space-y-4 mb-4">
@@ -158,7 +162,7 @@ const UserSettings: React.FC<UserSettingsProps> = ({ currentDate }) => {
       </div>
 
       {/* Advanced Settings Row */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Page Break Setting */}
         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-300 dark:border-blue-700 rounded-lg">
           <div className="flex flex-col gap-2">
@@ -209,6 +213,41 @@ const UserSettings: React.FC<UserSettingsProps> = ({ currentDate }) => {
                 </option>
               ))}
             </select>
+          </div>
+        </div>
+
+        {/* Logo Selection Setting */}
+        <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border-2 border-purple-300 dark:border-purple-700 rounded-lg">
+          <div className="flex flex-col gap-2">
+            <label
+              htmlFor={logoSelectionId}
+              className="font-semibold text-gray-800 dark:text-gray-200 text-base"
+            >
+              🖼️ Logo Selection:
+            </label>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Choose which logo to display
+            </p>
+            <div className="flex items-center gap-3 mt-2">
+              <input
+                id={logoSelectionId}
+                type="checkbox"
+                checked={useCygnetLogo}
+                onChange={(e) => setUseCygnetLogo(e.target.checked)}
+                className="w-5 h-5 text-purple-600 bg-white border-purple-300 rounded focus:ring-purple-500 dark:focus:ring-purple-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-purple-600 cursor-pointer"
+              />
+              <label
+                htmlFor={logoSelectionId}
+                className="text-base font-medium text-gray-800 dark:text-gray-200 cursor-pointer"
+              >
+                Use Cygnet Logo
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+              {useCygnetLogo
+                ? '✅ Cygnet logo enabled'
+                : '📋 Using placeholder logo'}
+            </p>
           </div>
         </div>
       </div>
@@ -304,7 +343,8 @@ const PrintableDocument = forwardRef<HTMLDivElement, PrintableDocumentProps>(
   ({ weeks, currentDate, name, position, siteName }, ref) => {
     const monthName = format(currentDate, 'MMMM');
     const year = format(currentDate, 'yyyy');
-    const { pageBreakDay, payrollDeadlineOffset } = useSettingsStore();
+    const { pageBreakDay, payrollDeadlineOffset, useCygnetLogo } =
+      useSettingsStore();
     const PAGE_BREAK_DAY_COUNT = pageBreakDay;
 
     // Calculate the actual payroll deadline date
@@ -342,7 +382,11 @@ const PrintableDocument = forwardRef<HTMLDivElement, PrintableDocumentProps>(
 
     const Header = () => (
       <header className="flex justify-between items-start mb-4">
-        <Logo className="w-28 h-auto" />
+        {useCygnetLogo ? (
+          <Logo className="w-28 h-auto" />
+        ) : (
+          <PlaceholderLogo className="w-28 h-auto" />
+        )}
         <div className="text-right flex-1">
           <h1 className="text-xl font-bold text-black leading-tight">
             {siteName} – {monthName} Timesheet
@@ -503,4 +547,5 @@ export default function TimesheetGeneratorPage() {
     </div>
   );
 }
+
 // src/components/TimesheetGeneratorPage.tsx
