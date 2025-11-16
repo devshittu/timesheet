@@ -24,7 +24,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       name: '',
       position: '',
-      siteName: 'Cygnet Churchill',
+      siteName: 'Company/Site Name',
       pageBreakDay: 16,
       payrollDeadlineOffset: 1, // Default to 2nd-to-last working day
       useCygnetLogo: false, // Default to placeholder logo
